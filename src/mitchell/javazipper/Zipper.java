@@ -1,40 +1,133 @@
 package mitchell.javazipper;
 
-import java.awt.FlowLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.BufferedInputStream;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+import javax.swing.Box;
+import javax.swing.DefaultListModel;
+import javax.swing.GroupLayout;
+import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
+import javax.swing.SwingConstants;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 
 /**
  * 
- * @author Mitchell Zicnk <mitchellzinck@yahoo.com>
+ * @author Mitchell Zinck <mitchellzinck@yahoo.com>
  *
  */
 public class Zipper extends JFrame {
-	
+
 	/**
 	 * The JFrame for this program.
 	 */
 	final JFrame frame = new JFrame();
+	private static ArrayList<String> listOfItems = new ArrayList<String>();
+	private JButton compress, decompress, finish;
+	private File folder_or_file;
+	private DefaultListModel<String> itemListModel, finalListModel;
+	private ButtonListener bl;
+	private JLabel filler, itemListLabel, finalListLabel;
+	private JList itemList, finalList;
+	private JScrollPane itemListPane, finalListPane;
+	private ListSelectionModel listSelectionModel;
+	private boolean alreadyDone = false, itemListBool = true, compressing;
 	
 	/**
 	 * Zipper constructor.
 	 */
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public Zipper() {
-		super("Cache maker.");
-		setLayout(new FlowLayout());
+		super("Cache maker");
+		
+		GroupLayout layout = new GroupLayout(getContentPane());
+		this.getContentPane().setLayout(layout);
+		layout.setAutoCreateGaps(true);
+	    layout.setAutoCreateContainerGaps(true);
+		
+		compress = new JButton("Compress");
+		decompress = new JButton("Decompress");
+		finish = new JButton("Finish");
+		
+		filler = new JLabel("Filler");
+		itemListLabel = new JLabel("Raw folder/Cache Files");
+		finalListLabel = new JLabel("Files to compress/decompress");
+		
+		bl = new ButtonListener();
+		compress.addActionListener(bl);
+		decompress.addActionListener(bl);
+		finish.addActionListener(bl);
+		
+		itemListModel = new DefaultListModel();
+		finalListModel = new DefaultListModel();
+		
+		itemList = new JList();
+		itemList.setModel(itemListModel);
+		itemListPane = new JScrollPane(itemList);
+		itemListPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+		
+		finalList = new JList();
+		finalList.setModel(finalListModel);
+		finalListPane = new JScrollPane(finalList);
+		finalListPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+		//listPanel.setVisible(false);
+		
+		listSelectionModel = itemList.getSelectionModel();
+        listSelectionModel.addListSelectionListener(new ItemListHandler());
+        listSelectionModel = finalList.getSelectionModel();
+        listSelectionModel.addListSelectionListener(new FinalListHandler());
+        
+        layout.setHorizontalGroup(layout.createSequentialGroup()
+        		.addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+        			.addComponent(compress)
+        			.addComponent(decompress))
+        	    .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+        	    	.addComponent(itemListLabel)
+        	        .addComponent(itemListPane))
+    	        .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+    	        	.addComponent(finalListLabel)
+    	        	.addComponent(finalListPane))
+        	    .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+        	        .addComponent(finish))
+        	        //.addComponent(cancelButton))
+        	);
+        
+        layout.linkSize(SwingConstants.HORIZONTAL, compress, decompress);
+        
+        layout.setVerticalGroup(layout.createSequentialGroup()
+        	    .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+        	        .addComponent(compress)
+        	        .addComponent(itemListLabel)
+        	        .addComponent(finalListLabel)
+        	        .addComponent(finish))
+        	    .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+        	    	.addComponent(decompress)
+        	        .addComponent(itemListPane)
+        	        .addComponent(finalListPane))
+        	);
+		
+		this.pack();
 	}
 	
 	/**
@@ -60,39 +153,104 @@ public class Zipper extends JFrame {
 		
 		Zipper zipper = new Zipper();
 		zipper.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		zipper.setSize(500, 700);
+		zipper.setSize(500, 500);
 		zipper.setVisible(true);
 		zipper.setResizable(false);
-		
+	}
+	
+	/**
+	 * Lists all files in a folder
+	 * @param folder
+	 * 		Folder to list files from
+	 */
+	public void listFilesForFolder(final File folder) {
+		File[] listOfFiles = folder.listFiles();
 
-		
-		
-		System.out.println("Do you want to compress or decompress? (C/D)");
-		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-		
-		try {
-			String str = br.readLine();
-			if(str.equalsIgnoreCase(("C"))) {
-				System.out.println("Please type in the directory that contains your files... \n(EX: C:/Users/Mitchell/Desktop/raw/");
-				String directoryRead = br.readLine();
-				System.out.println("Please type in the directory that you want to output the idx file to... \n(EX: C:/Users/Mitchell/Desktop/cache/");
-				String directoryWrite = br.readLine();
-				System.out.println("Please type in the .idx filename for this cache file 'INCLUDE THE EXTENSION'... \n(EX: main_cache_file.idx6");
-				String filename = br.readLine();
-				write(directoryRead, directoryWrite, filename);
-			} else if(str.equalsIgnoreCase("D")) {
-				System.out.println("Please type in the path to the .idx file you want to decompress... 'INCLUDE EXTENSION'\n(EX: C:/Users/Mitchell/Desktop/cache/urmom.idx6");
-				String filePath = br.readLine();
-				System.out.println("Please type in the directory that you want to output the raw files to... \n(EX: C:/Users/Mitchell/Desktop/raw/");
-				String directoryWrite = br.readLine();
-				System.out.println("Please type in the extension you want all the raw files to be... \n(EX: .png");
-				String extension = br.readLine();
-				read(filePath, directoryWrite, extension);
-			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		for (File file : listOfFiles) {
+		    if (file.isFile()) {
+		        itemListModel.addElement(file.getName());
+		    }
 		}
+	}
+	
+	/**
+	 * The button Listener class
+	 * 
+	 * @author Mitchell
+	 *
+	 */
+	private class ButtonListener implements ActionListener {
+		@Override
+		public void actionPerformed(ActionEvent action) {
+			if(action.getActionCommand().equals("Decompress")) {
+				JFileChooser fileChooser = new JFileChooser();				
+				int returnValue = fileChooser.showOpenDialog(Zipper.this);
+				
+				if(returnValue == JFileChooser.APPROVE_OPTION) {
+					folder_or_file = fileChooser.getSelectedFile();
+					ArrayList<String> names = read(folder_or_file.getPath(), null, null, false);
+					
+					finalListModel.removeAllElements();
+					itemListModel.removeAllElements();
+					for(String s : names) {
+						itemListModel.addElement(s);
+					}
+				}
+				compressing = false;
+			} else if(action.getActionCommand().equals("Finish")) {
+				if(finalListModel.getSize() == 0) {
+					JOptionPane.showConfirmDialog(null, "Please add stuff to the files to compress/decompress list.", 
+							"Error",  JOptionPane.OK_OPTION);
+					return;
+				}
+				
+				JTextField fileName_orExtension = new JTextField(5);
+			    JTextField writePath = new JTextField(50);
+	
+			    JPanel optionPanel = new JPanel();
+			    optionPanel.add(new JLabel("Extension:"));
+			    optionPanel.add(fileName_orExtension);
+			    optionPanel.add(Box.createHorizontalStrut(15)); // a spacer
+			    optionPanel.add(new JLabel("Write Path:"));
+			    optionPanel.add(writePath);
+			    
+			    int result;
+			    if(compressing == false) {
+			    	result = JOptionPane.showConfirmDialog(null, optionPanel, "Please Enter Raw File Extensions (Ex: .png, .idx) "
+							+ "and Write Path (Ex: C:/Desktop/rawfiles)", JOptionPane.OK_CANCEL_OPTION);
+					if(result == JOptionPane.OK_OPTION) {
+						for(Object s : finalListModel.toArray()) {
+							String z = (String) s;
+							listOfItems.add(z);
+						}
+						read(folder_or_file.getPath(), writePath.getText(), fileName_orExtension.getText(), true);
+					}
+			    } else {
+			    	result = JOptionPane.showConfirmDialog(null, optionPanel, "Please Enter Compressed File Name (Ex: main_file_cache.idx6) "
+							+ "and Write Path (Ex: C:/Desktop/cache)", JOptionPane.OK_CANCEL_OPTION);
+					if(result == JOptionPane.OK_OPTION) {
+						for(Object z : finalListModel.toArray()) {
+							String s = (String) z;
+							listOfItems.add(s);
+						}
+						write(folder_or_file.toString(), writePath.getText(), fileName_orExtension.getText());
+					}
+			    }
+							
+				listOfItems.clear();
+			} else if(action.getActionCommand().equals("Compress")) {
+				JFileChooser fileChooser = new JFileChooser();				
+				fileChooser.setDialogTitle("File Chooser");
+				fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+				int returnValue = fileChooser.showOpenDialog(Zipper.this);
+				
+				if(returnValue == JFileChooser.APPROVE_OPTION) {
+					folder_or_file = fileChooser.getSelectedFile();
+					listFilesForFolder(folder_or_file);
+				}
+				compressing = true;
+			}
+		}		
 	}
 	
 	/**
@@ -105,28 +263,54 @@ public class Zipper extends JFrame {
 	 * @param extension
 	 * 			The raw files extensions.
 	 */
-	private static void read(String filePath, String directoryWrite, String extension) {
+	private static ArrayList<String> read(String filePath, String directoryWrite, String extension, boolean write) {
 		filePath.replace("\\", "/");
-		directoryWrite.replace("\\", "/");
-
-		if(!directoryWrite.substring(directoryWrite.length() - 1).equals("/")) {
-			directoryWrite += "/";
+		
+		if(write == true) {
+			directoryWrite.replace("\\", "/");
+	
+			if(!directoryWrite.substring(directoryWrite.length() - 1).equals("/")) {
+				directoryWrite += "/";
+			}
 		}
 		
 		byte[] buffer = new byte[1024];		
+		ArrayList<String> fileNames = new ArrayList<String>();
 		
 		try {
-			File folder = new File(directoryWrite);
-			
-			if (!folder.exists()) {
-				folder.mkdir();
+			File folder = null;
+			if(write == true) {
+				folder = new File(directoryWrite);				
+				
+				if (!folder.exists()) {
+					folder.mkdir();
+				}
 			}
 
 			ZipInputStream zis = new ZipInputStream(new FileInputStream(filePath));
 			ZipEntry ze = zis.getNextEntry();
 			
 			while (ze != null) {
-				System.out.println("Successful decompress of " + ze.getName());
+				if(write == false) {
+					fileNames.add(ze.getName());
+					ze = zis.getNextEntry();
+					continue;
+				}
+				
+				boolean cont = false;
+				for(String s : listOfItems) {
+					if(s.equals(ze.getName())) {
+						cont = true;
+						listOfItems.remove(s);
+						break;
+					}
+				}
+				
+				if(cont == false) {
+					ze = zis.getNextEntry();
+					continue;
+				}
+				
 				String fileName = ze.getName().substring(0,ze.getName().length() - 4) + extension;
 				File newFile = new File(folder + File.separator + fileName);
 				new File(newFile.getParent()).mkdirs();
@@ -146,6 +330,13 @@ public class Zipper extends JFrame {
 			zis.close();
 		} catch (IOException ex) {
 			ex.printStackTrace();
+		}
+		
+		
+		if(write == false) {
+			return fileNames;
+		} else {
+			return null;
 		}
 	}
 	
@@ -181,7 +372,7 @@ public class Zipper extends JFrame {
 			zos = new ZipOutputStream(new FileOutputStream(directoryWrite + filename));
 			
 			for(File child : dir.listFiles()) {
-				if(child.getName().contains(filename) || directoryWrite.contains(child.getName())) {
+				if(child.getName().contains(filename) || directoryWrite.contains(child.getName()) || !listOfItems.contains(child.getName())) {
 					continue;
 				}
 				System.out.println("Successful compress of " + child.getName());
@@ -202,5 +393,61 @@ public class Zipper extends JFrame {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} 
+	}
+	
+	/**
+	 * First list handler....
+	 * @author Mitchell
+	 *
+	 */
+	public class ItemListHandler implements ListSelectionListener {
+		@Override
+		public void valueChanged(ListSelectionEvent e) {
+	        ListSelectionModel lsm = (ListSelectionModel)e.getSource();
+
+	        if (lsm.isSelectionEmpty()) {
+	            return;
+	        } else if(alreadyDone == false) {
+	            int minIndex = lsm.getMinSelectionIndex();
+	            int maxIndex = lsm.getMaxSelectionIndex();
+	            for (int i = minIndex; i <= maxIndex; i++) {
+	                if (lsm.isSelectedIndex(i)) {
+	                    finalListModel.addElement(itemListModel.get(i));
+	                    itemListModel.remove(i);
+	                    alreadyDone = true;
+	                }
+	            }
+	        } else {
+	        	alreadyDone = false;
+	        }
+	    }
+	}
+	
+	/**
+	 * Second list handler....
+	 * @author Mitchell
+	 *
+	 */
+	public class FinalListHandler implements ListSelectionListener {
+		@Override
+		public void valueChanged(ListSelectionEvent e) {
+	        ListSelectionModel lsm = (ListSelectionModel)e.getSource();
+
+	        if (lsm.isSelectionEmpty()) {
+	            return;
+	        } else if(alreadyDone == false) {
+	            int minIndex = lsm.getMinSelectionIndex();
+	            int maxIndex = lsm.getMaxSelectionIndex();
+	            for (int i = minIndex; i <= maxIndex; i++) {
+	                if (lsm.isSelectedIndex(i)) {
+	                    itemListModel.addElement(finalListModel.get(i));
+	                    finalListModel.remove(i);
+	                    alreadyDone = true;
+	                }
+	            }
+	        } else {
+	        	alreadyDone = false;
+	        }
+	    }
 	}
 }
