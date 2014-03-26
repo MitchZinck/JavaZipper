@@ -8,7 +8,10 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Properties;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -44,15 +47,16 @@ public class Zipper extends JFrame {
 	 */
 	final JFrame frame = new JFrame();
 	private static ArrayList<String> listOfItems = new ArrayList<String>();
-	private JButton compress, decompress, finish;
+	private JButton compress, decompress, finish, addAll;
 	private File folder_or_file;
 	private DefaultListModel<String> itemListModel, finalListModel;
+	private static String recentOutput;
 	private ButtonListener bl;
-	private JLabel filler, itemListLabel, finalListLabel;
+	private JLabel itemListLabel, finalListLabel;
 	private JList itemList, finalList;
 	private JScrollPane itemListPane, finalListPane;
 	private ListSelectionModel listSelectionModel;
-	private boolean alreadyDone = false, itemListBool = true, compressing;
+	private boolean alreadyDone = false, compressing;
 	
 	/**
 	 * Zipper constructor.
@@ -68,9 +72,9 @@ public class Zipper extends JFrame {
 		
 		compress = new JButton("Compress");
 		decompress = new JButton("Decompress");
+		addAll = new JButton("Add all");
 		finish = new JButton("Finish");
 		
-		filler = new JLabel("Filler");
 		itemListLabel = new JLabel("Raw folder/Cache Files");
 		finalListLabel = new JLabel("Files to compress/decompress");
 		
@@ -78,6 +82,7 @@ public class Zipper extends JFrame {
 		compress.addActionListener(bl);
 		decompress.addActionListener(bl);
 		finish.addActionListener(bl);
+		addAll.addActionListener(bl);
 		
 		itemListModel = new DefaultListModel();
 		finalListModel = new DefaultListModel();
@@ -109,8 +114,8 @@ public class Zipper extends JFrame {
     	        	.addComponent(finalListLabel)
     	        	.addComponent(finalListPane))
         	    .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-        	        .addComponent(finish))
-        	        //.addComponent(cancelButton))
+        	        .addComponent(finish)
+        	        .addComponent(addAll))
         	);
         
         layout.linkSize(SwingConstants.HORIZONTAL, compress, decompress);
@@ -124,7 +129,8 @@ public class Zipper extends JFrame {
         	    .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
         	    	.addComponent(decompress)
         	        .addComponent(itemListPane)
-        	        .addComponent(finalListPane))
+        	        .addComponent(finalListPane)
+        	        .addComponent(addAll))
         	);
 		
 		this.pack();
@@ -135,6 +141,50 @@ public class Zipper extends JFrame {
 	 * @param args
 	 */
 	public static void main(String[] args) {		
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+			@Override
+			public void run() {
+				try {
+					Properties prop = new Properties();
+					OutputStream output = new FileOutputStream(System.getProperty("user.home") 
+							+ System.getProperty("file.separator") + "zipperconfig.properties");
+					
+					prop.setProperty("recentOutput", recentOutput);			 
+					prop.store(output, null);					
+				} catch (FileNotFoundException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				};
+			}
+		});
+		
+		InputStream input = null;
+		try {
+			Properties prop = new Properties();
+			input = new FileInputStream(System.getProperty("user.home") 
+					+ System.getProperty("file.separator") + "zipperconfig.properties");			
+			
+			prop.load(input);			
+			recentOutput = prop.getProperty("recentOutput");
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} finally {
+			if (input != null) {
+				try {
+					input.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+
 		try {
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 		} catch (ClassNotFoundException e1) {
@@ -205,13 +255,13 @@ public class Zipper extends JFrame {
 				}
 				
 				JTextField fileName_orExtension = new JTextField(5);
-			    JTextField writePath = new JTextField(50);
+			    JTextField writePath = new JTextField(recentOutput, 50);
 	
 			    JPanel optionPanel = new JPanel();
 			    optionPanel.add(new JLabel("Extension:"));
 			    optionPanel.add(fileName_orExtension);
 			    optionPanel.add(Box.createHorizontalStrut(15)); // a spacer
-			    optionPanel.add(new JLabel("Write Path:"));
+			    optionPanel.add(new JLabel("Write Path: "));
 			    optionPanel.add(writePath);
 			    
 			    int result;
@@ -219,6 +269,7 @@ public class Zipper extends JFrame {
 			    	result = JOptionPane.showConfirmDialog(null, optionPanel, "Please Enter Raw File Extensions (Ex: .png, .idx) "
 							+ "and Write Path (Ex: C:/Desktop/rawfiles)", JOptionPane.OK_CANCEL_OPTION);
 					if(result == JOptionPane.OK_OPTION) {
+						recentOutput = writePath.getText();
 						for(Object s : finalListModel.toArray()) {
 							String z = (String) s;
 							listOfItems.add(z);
@@ -229,6 +280,7 @@ public class Zipper extends JFrame {
 			    	result = JOptionPane.showConfirmDialog(null, optionPanel, "Please Enter Compressed File Name (Ex: main_file_cache.idx6) "
 							+ "and Write Path (Ex: C:/Desktop/cache)", JOptionPane.OK_CANCEL_OPTION);
 					if(result == JOptionPane.OK_OPTION) {
+						recentOutput = writePath.getText();
 						for(Object z : finalListModel.toArray()) {
 							String s = (String) z;
 							listOfItems.add(s);
@@ -249,6 +301,12 @@ public class Zipper extends JFrame {
 					listFilesForFolder(folder_or_file);
 				}
 				compressing = true;
+			} else if(action.getActionCommand().equals("Add all")) {
+				for(Object s : itemListModel.toArray()) {
+					String z = (String) s;
+					finalListModel.addElement(z);
+					itemListModel.removeElement(s);
+				}
 			}
 		}		
 	}
