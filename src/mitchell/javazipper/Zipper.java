@@ -3,6 +3,7 @@ package mitchell.javazipper;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -10,12 +11,26 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Properties;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
 import javax.swing.Box;
 import javax.swing.DefaultListModel;
 import javax.swing.GroupLayout;
@@ -344,8 +359,11 @@ public class Zipper extends JFrame {
 					folder.mkdir();
 				}
 			}
+			
+			Path path = Paths.get(filePath);
+			byte[] zipfile = Files.readAllBytes(path);
 
-			ZipInputStream zis = new ZipInputStream(new FileInputStream(filePath));
+			ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(decode(zipfile)));
 			ZipEntry ze = zis.getNextEntry();
 			
 			while (ze != null) {
@@ -390,7 +408,6 @@ public class Zipper extends JFrame {
 			ex.printStackTrace();
 		}
 		
-		
 		if(write == false) {
 			return fileNames;
 		} else {
@@ -433,7 +450,6 @@ public class Zipper extends JFrame {
 				if(child.getName().contains(filename) || directoryWrite.contains(child.getName()) || !listOfItems.contains(child.getName())) {
 					continue;
 				}
-				System.out.println("Successful compress of " + child.getName());
 				ZipEntry ze = new ZipEntry(child.getName().substring(0, child.getName().length() - 4) + ".dat");
 				ze.setMethod(ZipEntry.DEFLATED);
 				zos.putNextEntry(ze);
@@ -444,6 +460,13 @@ public class Zipper extends JFrame {
 			}
 			
 			zos.close();
+			
+			Path path = Paths.get(directoryWrite + filename);
+			byte[] zipfile = Files.readAllBytes(path);
+			
+			FileOutputStream fos = new FileOutputStream(directoryWrite + filename);
+			fos.write(encode(zipfile));
+			fos.close();
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -507,5 +530,91 @@ public class Zipper extends JFrame {
 	        	alreadyDone = false;
 	        }
 	    }
+	}
+	
+
+	/**
+	 * Method to decode the zip file.
+	 * @param byteToEncode
+	 * 			The encoded zipfile to a byte array.
+	 * @return
+	 * 			Decoded zipfile byte array.
+	 */
+	public static byte[] decode(byte[] decode) {
+		String passphrase = "A8ch2!d7vhaw";
+		byte[] salt = "Ahsgf!&%gaDgs47$SDhisa".getBytes();
+		int iterations = 10000;
+		try {
+			SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
+			SecretKey tmp = factory.generateSecret(new PBEKeySpec(passphrase.toCharArray(), salt, iterations, 128));
+			SecretKeySpec key = new SecretKeySpec(tmp.getEncoded(), "AES");			
+			
+			Cipher aes = Cipher.getInstance("AES/ECB/PKCS5Padding");
+
+			aes.init(Cipher.DECRYPT_MODE, key);
+			return aes.doFinal(decode);
+		} catch (InvalidKeySpecException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchPaddingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IllegalBlockSizeException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (BadPaddingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
+	/**
+	 * Method to encode the zip file.
+	 * @param byteToEncode
+	 * 			The zipfile to a byte array.
+	 * @return
+	 * 			Encoded zipfile byte array.
+	 */
+	public static byte[] encode(byte[] byteToEncode) {
+		String passphrase = "A8ch2!d7vhaw";
+		byte[] salt = "Ahsgf!&%gaDgs47$SDhisa".getBytes();
+		int iterations = 10000;
+		try {
+			SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
+			SecretKey tmp = factory.generateSecret(new PBEKeySpec(passphrase.toCharArray(), salt, iterations, 128));
+			SecretKeySpec key = new SecretKeySpec(tmp.getEncoded(), "AES");			
+			
+			Cipher aes = Cipher.getInstance("AES/ECB/PKCS5Padding");
+			aes.init(Cipher.ENCRYPT_MODE, key);
+			byte[] cipherText = aes.doFinal(byteToEncode);
+			
+			return cipherText;
+		} catch (InvalidKeySpecException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchPaddingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IllegalBlockSizeException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (BadPaddingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;		
 	}
 }

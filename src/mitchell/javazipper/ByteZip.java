@@ -21,6 +21,15 @@ public class ByteZip {
 	private static HashMap<String, BufferedImage> imageArray = new HashMap<String, BufferedImage>();
 	private static HashMap<String, byte[]> itemDefArray = new HashMap<String, byte[]>();
 	
+	public ByteZip() {
+		
+	}
+	
+	public static void main(String[] args) {
+		ByteZip bz = new ByteZip();
+		zipFileManager("C:\\Users\\Mitchell\\Desktop\\cache\\cachefiles\\urmom.idx7", "IMAGE");
+	}
+	
 	private static void zipFileManager(String filePath, String purpose) {
 		filePath.replace("\\", "/");
 		
@@ -30,7 +39,6 @@ public class ByteZip {
 		try {
 			ZipInputStream zis = new ZipInputStream(new FileInputStream(filePath));
 			ByteArrayOutputStream bos = new ByteArrayOutputStream();
-			new ByteArrayInputStream(buffer);
 			ZipEntry ze = zis.getNextEntry();
 			
 			while (ze != null) {
@@ -69,7 +77,7 @@ public class ByteZip {
 				bos.reset();
 				ze = zis.getNextEntry();
 			}
-			
+	
 			bos.close();
 			zis.closeEntry();
 			zis.close();
